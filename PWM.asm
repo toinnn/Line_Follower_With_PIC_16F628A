@@ -8,10 +8,38 @@ org 0x00
 org 0x4 
     goto PWM_INTER
     
-PWM_INTER: 
-    ;BTFSS INTCON, 2
+PWM_INTER:
+    BCF  INTCON , 7 ; APAGA A CHAVE GLOBAL DE INTERRUPÇÃO
+    BTFSS INTCON, 2 ;testa se a flag de Timer0 foi ativada
+    goto Restart_T0
+    BTFSS PIR1, 1;testa se a flag de Timer2 foi ativada
+    goto Restart_T2
+    ;NÃO SE ESQUECE DE DESLIGAR AS FLAGS DE TIMER NO FINAL
+Restart_T0:
+    ;(F -> W , W-> AUX) F->AUX , 255 -> F , AUX->W ,F = F-W
+    ;AUX = F:
+    MOVF PWM_ESQ , 0
+    MOVWF AUX_DE_RESTART
+    
+    ;F = 255
+    MOVLW 255
+    MOVWF PWM_ESQ
+    
+    ;W = AUX
+    MOVF AUX_DE_RESTART , 0
+    
+    ;F = F-W
+    SUBWF PWM_ESQ , 1
+    
     ;NÃO SE ESQUECE DE DESLIGAR AS FLAGS NO FINAL
+    BCF INTCON, 2 ;APAGA A FLAG DE INTERRUPÇÃO DO TIMER 0
+    BSF  INTCON , 7 ; LIGA A CHAVE GLOBAL DE INTERRUPÇÃO
+    
+    RETFIE
+    
+Restart_T2:
 INICIO:
+    AUX_DE_RESTART EQU 0x91
     ;PWM ESTÁ DISCRETIZADO EM 256 NÍVEIS, SENDO 1 O MENOR VALOR DE TENSÃO E 256 
     ;O VALOR DE TENSÃO MÁXIMO , NESTE CASO IGUAL AO DE PORTA(5V)
     ;O MOTOR DIR SEGUE A MESMA LÓGICA , MAS INDO DE 0 A 255 ENVEZ DE 1 A 256
